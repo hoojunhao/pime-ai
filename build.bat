@@ -1,3 +1,6 @@
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-libchewing.ps1
+if errorlevel 1 exit /b %errorlevel%
+
 cmake . -Bbuild -G "Visual Studio 18 2026" -A Win32 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 cmake --build build --config Release
 
@@ -49,4 +52,3 @@ cd node\input_methods\emojime
 cmd /C npm install
 cmd /C npm run build
 cd ..\..\..
-
