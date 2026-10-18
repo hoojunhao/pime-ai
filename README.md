@@ -41,8 +41,10 @@ Contributions using AI coding tools are welcomed! However, to ensure code qualit
 
 *   Use `build.bat` to build everything, or use the following CMake commands to generate Visual Studio project.
 
-    `build.bat` runs `scripts/build-libchewing.ps1`, which regenerates PIME's
-    reviewable extension dictionary from `data/chewing/pime.csv`.
+    `build.bat` runs `scripts/build-libchewing.ps1`, which validates and
+    regenerates the reviewable PIME and PIME AI extension dictionaries from
+    `data/chewing/pime.csv` and `data/chewing/pime-ai.csv`. Keep vocabulary
+    maintained only by this fork in `pime-ai.csv`.
 
         cmake . -Bbuild -G "Visual Studio 16 2019" -A Win32
         cmake --build build --config Release

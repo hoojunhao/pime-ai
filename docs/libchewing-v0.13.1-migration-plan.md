@@ -32,9 +32,10 @@ submodule 固定 commit 為準，不依賴該外部目錄。
 | SQLite link | 完成 | SQLite 靜態連結，無 `sqlite3.dll` runtime dependency |
 | Python C ABI | 完成 | 所有 PIME 使用中的 API 已宣告 `argtypes`、`restype` |
 | 新版系統詞庫 | 完成 | 已改用 `word.dat`、`tsi.dat`、`symbols.dat`、`swkb.dat` |
-| PIME 附加詞庫 | 完成 | `pime.dat` 包含「馬斯克」「伊隆馬斯克」，真實 DLL 候選測試通過 |
+| PIME 附加詞庫 | 完成 | `pime.dat` 包含「馬斯克」，真實 DLL 候選測試通過 |
+| PIME AI 附加詞庫 | 完成 | `pime-ai.dat` 包含「伊隆馬斯克」，真實 DLL 候選測試通過 |
 | 完整 PIME build | 完成 | x86、x64、ARM64 及 Node 輸入法建置成功 |
-| NSIS installer | 完成建置 | payload 包含新版 DLL、系統詞庫與 `pime.dat` |
+| NSIS installer | 完成建置 | payload 包含新版 DLL、系統詞庫、`pime.dat` 與 `pime-ai.dat` |
 | Fresh install 人工測試 | 尚未執行 | 尚未在測試機完成 TSF 註冊、輸入及 uninstall |
 | 使用者詞庫遷移 | 不在範圍 | 依決策不修改或轉換 `chewing.sqlite3` |
 
@@ -47,6 +48,7 @@ python/libchewing/data/tsi.dat
 python/libchewing/data/symbols.dat
 python/libchewing/data/swkb.dat
 python/libchewing/data/dictionary.d/pime.dat
+python/libchewing/data/dictionary.d/pime-ai.dat
 installer/PIME-2.0.0-beta3-setup.exe
 ```
 
@@ -54,13 +56,16 @@ installer/PIME-2.0.0-beta3-setup.exe
 
 ```text
 chewing.dll
-b41da53035bd9d11126dd3b7b51317df9aa5bfee430bd4cfa6e1f74bfbeff347
+f6fb0cc78eb315b159e5bea3a693d25319d6662002c66685094ff579ea131bcf
 
 pime.dat
-2c45908d271a8335eb7941f023b3b991507ccc1c132172b9e4989cba1762cc42
+2a30fcfbf05208d9aa43b2978843085c00fb69386b0335c62874a850d60b74e6
+
+pime-ai.dat
+436bce03ae57ac53a17226ff7e041e0f1999576a5feb6f4a3fb95c0475cd9ac8
 
 PIME-2.0.0-beta3-setup.exe
-e0ee51390b22a3a110064537e42f5b5051133f5767ebf591a18319884f480d99
+f6004539e1447acdb89949f80224531596c8e82a7943f89876cf12703e43fcda
 ```
 
 ### 自動化驗證
@@ -71,7 +76,7 @@ e0ee51390b22a3a110064537e42f5b5051133f5767ebf591a18319884f480d99
 | Rust core | 107 passed |
 | Rust C API | 107 passed |
 | `chewing-cli` | 103 passed |
-| Python backend 與 libchewing binding | 10 passed |
+| Python backend、詞庫驗證與 libchewing binding | 13 passed |
 | PIME native CTest | 2 passed |
 | 完整 `build.bat` | x86、x64、ARM64 與 Node targets 全部成功 |
 | Installer license freshness | 通過 |
@@ -84,6 +89,7 @@ chewing.dll=1
 word.dat=1
 tsi.dat=1
 pime.dat=1
+pime-ai.dat=1
 dictionary.dat=0
 index_tree.dat=0
 pinyin.tab=0
@@ -103,6 +109,7 @@ b402cdd Add PIME Chewing extension dictionary
 02bcea5 Harden backend error replies
 aaf9a28 Merge backend error handling fix
 69e8b06 Merge backend fix from Windows
+aae6d23 Separate the PIME AI Chewing dictionary
 ```
 
 ### 已知限制
@@ -137,7 +144,7 @@ aaf9a28 Merge backend error handling fix
 - 建立可重現的 Windows x86、SQLite-enabled 建置及 artifact 同步流程。
 - 更新 Python `ctypes` 宣告。
 - 打包新版 DLL、詞庫與必要授權。
-- 提供 PIME 自有附加詞庫的來源與建置流程。
+- 提供 PIME 與 PIME AI 分層附加詞庫的來源與建置流程。
 
 ### 不包含
 
@@ -214,6 +221,10 @@ aaf9a28 Merge backend error handling fix
 - 使用同版 `chewing-cli` 產生附加詞庫，安裝至
   `python/libchewing/data/dictionary.d/`。
 - 首批詞彙包含已確認缺少的現代詞，並檢查詞彙字數、注音音節數與重複項。
+- PIME 詞彙保存在 `data/chewing/pime.csv`；僅由此 fork 維護的詞彙
+  保存在 `data/chewing/pime-ai.csv`，兩者分別產生 `pime.dat` 與
+  `pime-ai.dat`。
+- 建置前檢查兩層詞庫的欄位、詞彙字數、注音音節數及與上游詞庫的重複項。
 - 以實際候選結果驗證附加詞庫載入；若 `chewing_new2` 不載入附加詞庫，
   改用 `chewing_new3` 並明確指定 dictionary names。
 
