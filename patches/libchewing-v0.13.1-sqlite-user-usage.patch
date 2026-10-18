@@ -1,0 +1,8 @@
+diff --git a/src/dictionary/sqlite.rs b/src/dictionary/sqlite.rs
+--- a/src/dictionary/sqlite.rs
++++ b/src/dictionary/sqlite.rs
+@@ -401 +401,3 @@ impl Dictionary for SqliteDictionary {
+-    fn set_usage(&mut self, _usage: DictionaryUsage) {}
++    fn set_usage(&mut self, usage: DictionaryUsage) {
++        self.info.usage = usage;
++    }

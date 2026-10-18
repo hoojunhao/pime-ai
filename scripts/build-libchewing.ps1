@@ -17,6 +17,8 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $libchewingRoot = Join-Path $repositoryRoot "libchewing"
 $runtimeRoot = Join-Path $repositoryRoot "python\libchewing"
 $runtimeDataRoot = Join-Path $runtimeRoot "data"
+$libchewingPatch = Join-Path $repositoryRoot `
+    "patches\libchewing-v0.13.1-sqlite-user-usage.patch"
 $pimeDictionarySource = Join-Path $repositoryRoot "data\chewing\pime.csv"
 $pimeAiDictionarySource = Join-Path $repositoryRoot "data\chewing\pime-ai.csv"
 $dictionaryValidator = Join-Path $repositoryRoot `
@@ -124,6 +126,9 @@ if (-not (Test-Path (Join-Path $libchewingRoot "CMakeLists.txt"))) {
 if (-not (Test-Path $bundledPython)) {
     throw "Bundled Python was not found at $bundledPython"
 }
+if (-not (Test-Path $libchewingPatch)) {
+    throw "Required libchewing patch was not found at $libchewingPatch"
+}
 
 $libchewingCommit = Get-GitRevision $libchewingRoot
 $dataRoot = Join-Path $libchewingRoot "data"
@@ -143,6 +148,9 @@ if ($LASTEXITCODE -ne 0) {
 if ($sourceChanges.Count -ne 0) {
     throw "The libchewing submodule must be clean before building."
 }
+$libchewingPatchHash = (
+    Get-FileHash -Algorithm SHA256 $libchewingPatch
+).Hash.ToLowerInvariant()
 
 Invoke-NativeCommand $bundledPython $dictionaryValidator `
     --base (Join-Path $dataRoot "dict\chewing\word.csv") `
@@ -209,7 +217,14 @@ if ($Clean -and (Test-Path $BuildDirectory)) {
     Remove-Item -Recurse -Force $BuildDirectory
 }
 
+$patchApplied = $false
 try {
+Invoke-NativeCommand git -C $libchewingRoot apply --unidiff-zero --check `
+    $libchewingPatch
+Invoke-NativeCommand git -C $libchewingRoot apply --unidiff-zero `
+    $libchewingPatch
+$patchApplied = $true
+
 $installRoot = Join-Path $BuildDirectory "install"
 $buildTesting = if ($RunTests) { "ON" } else { "OFF" }
 $configureArguments = @(
@@ -333,6 +348,7 @@ foreach ($obsoleteName in "dictionary.dat", "index_tree.dat", "pinyin.tab") {
 $manifestLines = @(
     "libchewing=$libchewingCommit"
     "libchewing-data=$dataCommit"
+    "libchewing-patch-sha256=$libchewingPatchHash"
     "rust-toolchain=$rustToolchain"
     "rust-target=$rustTarget"
     "vcpkg-triplet=$vcpkgTriplet"
@@ -357,6 +373,13 @@ $manifestPath = Join-Path $BuildDirectory "pime-runtime-manifest.txt"
 Write-Host "libchewing v0.13.1 runtime staged successfully."
 Write-Host "Manifest: $manifestPath"
 } finally {
+    if ($patchApplied) {
+        & git -C $libchewingRoot apply --unidiff-zero --reverse `
+            $libchewingPatch
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to remove the carried libchewing patch."
+        }
+    }
     $changedSourceFiles = @(
         & git -C $libchewingRoot diff --name-only
     )
@@ -365,5 +388,11 @@ Write-Host "Manifest: $manifestPath"
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "Unable to restore libchewing/Cargo.lock."
         }
+    }
+    $remainingSourceChanges = @(
+        & git -C $libchewingRoot status --porcelain --untracked-files=no
+    )
+    if ($LASTEXITCODE -ne 0 -or $remainingSourceChanges.Count -ne 0) {
+        throw "The libchewing submodule is not clean after building."
     }
 }
