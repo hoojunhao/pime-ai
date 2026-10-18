@@ -6,8 +6,8 @@
 
 將 PIME 新酷音從舊版 libchewing 遷移至 Codeberg 的穩定版
 `v0.13.1`，保留 Windows 10、x86 Python backend 與主要輸入行為，並建立
-可重現的 DLL、系統詞庫及安裝檔建置流程。既有使用者詞庫遷移已自本次範圍
-移除，須另案處理。
+可重現的 DLL、系統詞庫及安裝檔建置流程。既有 `chewing.sqlite3` 會先建立
+一次性備份，再交由 v0.13.1 的上游 migration 轉換。
 
 固定版本：
 
@@ -22,8 +22,8 @@ submodule 固定 commit 為準，不依賴該外部目錄。
 ## 導入結果
 
 目前實作位於 `feature/libchewing-v0.13.1`，已完成程式、詞庫、建置流程、
-授權與 NSIS installer 產物。使用者詞庫遷移及安裝後的人工 TSF 測試不在
-已完成範圍。
+授權、SQLite 使用者詞庫與 NSIS installer 產物。安裝後的人工 TSF 測試
+尚未完成。
 
 | 項目 | 結果 | 證據 |
 | --- | --- | --- |
@@ -37,7 +37,8 @@ submodule 固定 commit 為準，不依賴該外部目錄。
 | 完整 PIME build | 完成 | x86、x64、ARM64 及 Node 輸入法建置成功 |
 | NSIS installer | 完成建置 | payload 包含新版 DLL、系統詞庫、`pime.dat` 與 `pime-ai.dat` |
 | Fresh install 人工測試 | 尚未執行 | 尚未在測試機完成 TSF 註冊、輸入及 uninstall |
-| 使用者詞庫遷移 | 不在範圍 | 依決策不修改或轉換 `chewing.sqlite3` |
+| SQLite 使用者詞庫 | 完成 | carried patch 修正 usage；新增、重開、刪除與雙 context 測試通過 |
+| 舊詞庫遷移 | 完成自動化路徑 | 先驗證 `.pre-v0.13.1.bak`，再由 v0.13.1 migration 轉換 |
 
 ### 產物
 
@@ -56,7 +57,7 @@ installer/PIME-2.0.0-beta3-setup.exe
 
 ```text
 chewing.dll
-f6fb0cc78eb315b159e5bea3a693d25319d6662002c66685094ff579ea131bcf
+5de04f92643db9f8ecf65d9290a3e181cb4af0c2a59509df247e4f80fee41a08
 
 pime.dat
 2a30fcfbf05208d9aa43b2978843085c00fb69386b0335c62874a850d60b74e6
@@ -65,7 +66,7 @@ pime-ai.dat
 436bce03ae57ac53a17226ff7e041e0f1999576a5feb6f4a3fb95c0475cd9ac8
 
 PIME-2.0.0-beta3-setup.exe
-f6004539e1447acdb89949f80224531596c8e82a7943f89876cf12703e43fcda
+cc4e3cdff39d99139ca7b805bda59f5fbe0e5987ddf7b70a6fb0ead5b3375235
 ```
 
 ### 自動化驗證
@@ -76,7 +77,7 @@ f6004539e1447acdb89949f80224531596c8e82a7943f89876cf12703e43fcda
 | Rust core | 107 passed |
 | Rust C API | 107 passed |
 | `chewing-cli` | 103 passed |
-| Python backend、詞庫驗證與 libchewing binding | 13 passed |
+| Python backend、詞庫驗證與 libchewing binding | 18 passed |
 | PIME native CTest | 2 passed |
 | 完整 `build.bat` | x86、x64、ARM64 與 Node targets 全部成功 |
 | Installer license freshness | 通過 |
@@ -116,8 +117,9 @@ aae6d23 Separate the PIME AI Chewing dictionary
 
 - 尚未執行 installer 的實際 fresh install、TSF 註冊、記事本輸入、
   reboot、uninstall 與 rollback 測試。
-- 不保證舊 `chewing.sqlite3`、自動學習結果或設定工具詞庫操作可沿用。
-- v0.13.1 SQLite user dictionary 的 usage 與跨程序安全問題須另案處理。
+- 尚未執行多程序同時寫入 SQLite 的壓力測試。
+- v0.13.1 沒有公開的手動調頻 API；Ctrl+PageUp／PageDown 會顯示不支援，
+  不再直接修改私有 SQLite schema。
 - NSIS 仍有既有的 `mui.ComponentsPage.DescriptionText` warning，不影響產物生成。
 - Node 建置有既有 npm audit 項目，本次未混入第三方依賴升級。
 
@@ -129,8 +131,8 @@ aae6d23 Separate the PIME AI Chewing dictionary
    原始資料由 `phone.cin`、`tsi.src` 改成 `word.csv`、`tsi.csv`。
 3. PIME backend 是 x86 Python，因此必須建置
    `i686-pc-windows-msvc` 的 DLL；上游目前沒有 Windows x86 CI 證據。
-4. 新版 SQLite 使用 `dictionary_v1`、`userphrase_v2` 等表。PIME 現在直接
-   讀寫 `userphrase_v1`、`config_v1`，不能原樣保留。
+4. 新版 SQLite 使用 `dictionary_v1`、`userphrase_v2` 等表。PIME 不再直接
+   讀寫這些私有 schema；舊 `userphrase_v1` 僅由上游 migration 讀取。
 5. MSVC 產物名為 `chewing-msvc.dll`，PIME wrapper 現在載入
    `python/libchewing/chewing.dll`。
 6. 根目錄 `build.bat` 現已先建置及同步 libchewing runtime，並在任一
@@ -143,6 +145,7 @@ aae6d23 Separate the PIME AI Chewing dictionary
 - 更新 libchewing submodule URL 與固定版本。
 - 建立可重現的 Windows x86、SQLite-enabled 建置及 artifact 同步流程。
 - 更新 Python `ctypes` 宣告。
+- 修正 SQLite user dictionary usage，並在遷移舊資料前建立可驗證備份。
 - 打包新版 DLL、詞庫與必要授權。
 - 提供 PIME 與 PIME AI 分層附加詞庫的來源與建置流程。
 
@@ -152,7 +155,7 @@ aae6d23 Separate the PIME AI Chewing dictionary
 - 改寫其他輸入法。
 - 追蹤 libchewing `master` 或 alpha release。
 - 在同一變更中進行無關重構。
-- 遷移或改寫既有 `chewing.sqlite3` 使用者詞庫。
+- 提供 v0.13.1 未公開的手動調頻 API。
 
 ## 驗收條件
 
@@ -165,7 +168,7 @@ aae6d23 Separate the PIME AI Chewing dictionary
 4. **輸入行為**：一般組字、選字、翻頁、commit 與點字新酷音
    的主要路徑通過實機 smoke test。
 5. **安裝升級**：Windows 10 上的全新安裝成功；安裝包不混用新舊 DLL
-   或系統詞庫。保留使用者詞庫的升級安裝不在本次驗收範圍。
+   或系統詞庫。舊使用者詞庫須先建立有效備份，再允許上游 migration。
 
 ## 實作階段
 
@@ -204,14 +207,19 @@ aae6d23 Separate the PIME AI Chewing dictionary
 - 加入最低限度 ABI smoke test：載入 DLL、建立 context、取得版本、輸入、
   取得候選及釋放 context。
 
-### 4. 使用者詞庫遷移（已移出本次範圍）
+### 4. 使用者詞庫持久化與遷移
 
-**結果：未實作，依決策保留為獨立工作。**
+**結果：自動化路徑完成；多程序壓力與人工升級測試尚未執行。**
 
-- 不修改、搬移或轉換 `%APPDATA%\PIME\chewing\chewing.sqlite3`。
-- 不宣稱新版已保留舊 schema、自動學習結果或設定工具的詞庫操作。
-- 發佈升級版前，須以獨立設計解決 v0.13.1 SQLite user dictionary 的
-  context usage 與跨程序安全問題。
+- 建置時套用最小 carried patch，讓 `SqliteDictionary::set_usage()` 正確
+  設為 `User`；建置後還原並檢查 submodule 為乾淨狀態。
+- 首次開啟舊 `%APPDATA%\PIME\chewing\chewing.sqlite3` 前，建立並驗證
+  `chewing.sqlite3.pre-v0.13.1.bak`，備份失敗時停止 migration。
+- 舊資料轉換沿用 v0.13.1 的 `userphrase_v1` migration，不由 PIME 重寫
+  SQLite schema。
+- Ctrl+Delete 先透過公開 enumeration 取得讀音，再呼叫
+  `chewing_userphrase_remove()`；手動調頻暫停支援。
+- SQLite 模式不再混載 `chewing.dat` 或 `chewing-deleted.dat`。
 
 ### 5. 建立 PIME 附加詞庫
 
@@ -235,11 +243,11 @@ aae6d23 Separate the PIME AI Chewing dictionary
 - 確認 installer 僅打包新版完整 artifact set，升級時清除已淘汰的舊系統詞庫。
 - 將 Rust crates、libchewing-data 與 SQLite 的必要授權納入產物。
 - 更新 README 的工具需求、建置命令及 troubleshooting。
-- 人工測試 fresh install 與 uninstall；使用者資料 upgrade、rollback 另案處理。
+- 人工測試 fresh install、使用者資料 upgrade／rollback 與 uninstall。
 
 ## 驗證順序
 
-1. [x] 執行 libchewing upstream tests 與 PIME ABI smoke test。
+1. [x] 執行 libchewing upstream tests、SQLite persistence 與 PIME ABI smoke test。
 2. [x] 用 bundled x86 Python 驗證 DLL architecture、exports 與 context lifecycle。
 3. [ ] 執行新酷音與點字新酷音的手動輸入矩陣。
 4. [x] 建置 NSIS installer。
@@ -253,7 +261,8 @@ WHY 與 AI assistance declaration。
 
 ## 回復策略
 
-- 本次不修改 `chewing.sqlite3`；使用者詞庫升級與回復另案設計。
+- 舊 `chewing.sqlite3` 在 migration 前保留一次性備份；發生問題時先停止
+  PIME，再以該備份回復，不可只降級 DLL 後繼續使用已轉換資料庫。
 - 每次啟動只允許同 revision 的 DLL 與系統詞庫組合；版本不符時拒絕啟動新酷音。
 - 發佈前保留可重新產生舊 runtime bundle 的 tag。若新版發生阻斷問題，回復整組
   DLL、data 與 Python integration，不單獨降級其中一項。

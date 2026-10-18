@@ -44,7 +44,14 @@ Contributions using AI coding tools are welcomed! However, to ensure code qualit
     `build.bat` runs `scripts/build-libchewing.ps1`, which validates and
     regenerates the reviewable PIME and PIME AI extension dictionaries from
     `data/chewing/pime.csv` and `data/chewing/pime-ai.csv`. Keep vocabulary
-    maintained only by this fork in `pime-ai.csv`.
+    maintained only by this fork in `pime-ai.csv`. The script also applies the
+    pinned SQLite user-dictionary fix from `patches/` while building, then
+    restores the libchewing submodule to a clean state.
+
+    Before libchewing v0.13.1 migrates an existing `chewing.sqlite3`, PIME
+    creates and verifies a one-time `.pre-v0.13.1.bak` backup. User phrase
+    deletion uses the public libchewing API; manual frequency adjustment is
+    disabled because v0.13.1 has no public API for it.
 
         cmake . -Bbuild -G "Visual Studio 16 2019" -A Win32
         cmake --build build --config Release
