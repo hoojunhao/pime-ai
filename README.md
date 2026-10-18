@@ -13,6 +13,7 @@ All parts are licensed under GNU LGPL v2.1 license.
 # Documentation
 
 *   [MSIX and Microsoft Store publishing feasibility](docs/msix-store-feasibility.md)
+*   [libchewing v0.13.1 migration plan](docs/libchewing-v0.13.1-migration-plan.md)
 
 # Contributing
 Contributions using AI coding tools are welcomed! However, to ensure code quality, they must follow the rules in [AGENTS.md](AGENTS.md) to be accepted, and AI assistance must be clearly declared in pull requests, git commits, and file headers.
