@@ -21,9 +21,9 @@ Contributions using AI coding tools are welcomed! However, to ensure code qualit
 # Development
 
 ## Tool Requirements
-*   [CMake](http://www.cmake.org/) >= 3.0
-*   [Visual Studio 2019](https://visualstudio.microsoft.com/vs)
-*   [Rust Toolchain](https://rustup.rs/) (Stable channel with `i686-pc-windows-msvc` target)
+*   [CMake](http://www.cmake.org/) >= 3.27
+*   [Visual Studio 2022](https://visualstudio.microsoft.com/vs) with vcpkg
+*   [Rust Toolchain](https://rustup.rs/) 1.88.0 with the `i686-pc-windows-msvc` target
 *   [git](http://windows.github.com/)
 *   [Node.js](https://nodejs.org/) (Required for some backends like McBopomofo)
 
@@ -32,11 +32,12 @@ Contributions using AI coding tools are welcomed! However, to ensure code qualit
 
         git clone https://github.com/EasyIME/PIME.git
         cd PIME
-        git submodule update --init
+        git submodule update --init --recursive
 
 *   Ensure the 32-bit Rust target is installed:
 
-        rustup target add i686-pc-windows-msvc
+        rustup toolchain install 1.88.0
+        rustup target add i686-pc-windows-msvc --toolchain 1.88.0
 
 *   Use `build.bat` to build everything, or use the following CMake commands to generate Visual Studio project.
 

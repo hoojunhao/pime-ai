@@ -5,8 +5,9 @@
 ## 目標
 
 將 PIME 新酷音從舊版 libchewing 遷移至 Codeberg 的穩定版
-`v0.13.1`，保留 Windows 10、x86 Python backend、既有使用者詞庫與主要輸入
-行為，並建立可重現的 DLL、系統詞庫及安裝檔建置流程。
+`v0.13.1`，保留 Windows 10、x86 Python backend 與主要輸入行為，並建立
+可重現的 DLL、系統詞庫及安裝檔建置流程。既有使用者詞庫遷移已自本次範圍
+移除，須另案處理。
 
 固定版本：
 
@@ -38,8 +39,7 @@ submodule 固定 commit 為準，不依賴該外部目錄。
 
 - 更新 libchewing submodule URL 與固定版本。
 - 建立可重現的 Windows x86、SQLite-enabled 建置及 artifact 同步流程。
-- 更新 Python `ctypes` 宣告及使用者詞庫操作。
-- 遷移舊 `chewing.sqlite3`，保留使用者詞彙。
+- 更新 Python `ctypes` 宣告。
 - 打包新版 DLL、詞庫與必要授權。
 - 提供 PIME 自有附加詞庫的來源與建置流程。
 
@@ -49,6 +49,7 @@ submodule 固定 commit 為準，不依賴該外部目錄。
 - 改寫其他輸入法。
 - 追蹤 libchewing `master` 或 alpha release。
 - 在同一變更中進行無關重構。
+- 遷移或改寫既有 `chewing.sqlite3` 使用者詞庫。
 
 ## 驗收條件
 
@@ -58,14 +59,10 @@ submodule 固定 commit 為準，不依賴該外部目錄。
    `chewing.dll`，PE Machine 為 `0x014c`，且不缺少 runtime DLL。
 3. **系統詞庫**：安裝內容使用同 revision 產生的 `word.dat`、`tsi.dat`、
    `symbols.dat`、`swkb.dat`，一般注音及 PIME 附加詞均可成為候選。
-4. **使用者資料**：全新啟動可建立資料庫；既有 `userphrase_v1`
-   資料庫可先備份再遷移，原有詞彙仍可列舉及選取。
-5. **輸入行為**：一般組字、選字、翻頁、commit、Ctrl+數字加詞與點字新酷音
+4. **輸入行為**：一般組字、選字、翻頁、commit 與點字新酷音
    的主要路徑通過實機 smoke test。
-6. **設定工具**：使用者詞庫新增、刪除、列舉、匯入及匯出不依賴已淘汰的
-   schema，且不會覆寫正在使用中的 SQLite 檔案。
-7. **安裝升級**：Windows 10 上的全新安裝與保留 `%APPDATA%` 的升級安裝
-   均成功；安裝包不混用新舊 DLL 或詞庫。
+5. **安裝升級**：Windows 10 上的全新安裝成功；安裝包不混用新舊 DLL
+   或系統詞庫。保留使用者詞庫的升級安裝不在本次驗收範圍。
 
 ## 實作階段
 
@@ -98,18 +95,12 @@ submodule 固定 commit 為準，不依賴該外部目錄。
 - 加入最低限度 ABI smoke test：載入 DLL、建立 context、取得版本、輸入、
   取得候選及釋放 context。
 
-### 4. 遷移使用者詞庫
+### 4. 使用者詞庫遷移（已移出本次範圍）
 
-- 啟用新版 SQLite feature，繼續使用完整檔案路徑
-  `%APPDATA%\PIME\chewing\chewing.sqlite3`。
-- 第一次開啟前建立一次性備份；遷移失敗時保留原檔並回報錯誤。
-- 移除 `chewing_ime.py` 與 `config_tool.py` 對 `userphrase_v1`、
-  `config_v1` 的直接 SQL。
-- 刪除與列舉改用公開 userphrase API。
-- 若新版沒有公開的調高／調低詞頻 API，不得操作內部 schema；先以清楚訊息
-  停用快捷鍵，再另案向上游提出 API 或設計可維護的替代方案。
-- 匯入流程先關閉 context、驗證可開啟性並原子替換，再重新建立 context；
-  匯出前確保 WAL 內容已 checkpoint。
+- 不修改、搬移或轉換 `%APPDATA%\PIME\chewing\chewing.sqlite3`。
+- 不宣稱新版已保留舊 schema、自動學習結果或設定工具的詞庫操作。
+- 發佈升級版前，須以獨立設計解決 v0.13.1 SQLite user dictionary 的
+  context usage 與跨程序安全問題。
 
 ### 5. 建立 PIME 附加詞庫
 
@@ -131,20 +122,18 @@ submodule 固定 commit 為準，不依賴該外部目錄。
 
 1. 執行 libchewing upstream tests 與 PIME ABI smoke test。
 2. 用 bundled x86 Python 驗證 DLL architecture、exports 與 context lifecycle。
-3. 以暫存目錄測試全新資料庫及舊資料庫 migration。
-4. 執行新酷音、點字新酷音及設定工具的手動輸入矩陣。
-5. 建置 NSIS installer，於 Windows 10 驗證全新安裝與升級安裝。
+3. 執行新酷音與點字新酷音的手動輸入矩陣。
+4. 建置 NSIS installer，於 Windows 10 驗證全新安裝。
 
 ## 提交拆分
 
 每一階段使用獨立 commit。submodule URL／pointer、build pipeline、Python ABI、
-資料庫 migration、附加詞庫及 installer 文件不得混成一個大型提交。每個 commit
-需包含 WHAT、WHY 與 AI assistance declaration。
+附加詞庫及 installer 文件不得混成一個大型提交。每個 commit 需包含 WHAT、
+WHY 與 AI assistance declaration。
 
 ## 回復策略
 
-- migration 前保留原 `chewing.sqlite3` 備份，不做破壞性反向轉換。
+- 本次不修改 `chewing.sqlite3`；使用者詞庫升級與回復另案設計。
 - 每次啟動只允許同 revision 的 DLL 與系統詞庫組合；版本不符時拒絕啟動新酷音。
 - 發佈前保留可重新產生舊 runtime bundle 的 tag。若新版發生阻斷問題，回復整組
   DLL、data 與 Python integration，不單獨降級其中一項。
-
