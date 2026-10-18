@@ -90,20 +90,23 @@ class LibchewingBindingTests(unittest.TestCase):
 
     def test_pime_extension_dictionary_is_loaded(self):
         dictionary_dir = CHEWING_DICTIONARY_DIR
-        self.assertTrue(os.path.isfile(
-            os.path.join(dictionary_dir, "pime.dat")))
+        for dictionary in ("pime.dat", "pime-ai.dat"):
+            self.assertTrue(os.path.isfile(
+                os.path.join(dictionary_dir, dictionary)))
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            for index, (keys, phrase) in enumerate((
-                    ("a83n dk4", "馬斯克"),
-                    ("u xj/6a83n dk4", "伊隆馬斯克"))):
+            cases = (
+                ("a83n dk4", "馬斯克", "pime.dat"),
+                ("u xj/6a83n dk4", "伊隆馬斯克", "pime-ai.dat"),
+            )
+            for index, (keys, phrase, extension) in enumerate(cases):
                 with self.subTest(phrase=phrase):
                     context = ChewingContext(
                         syspath=";".join((
                             dictionary_dir, CHEWING_DATA_DIR)),
                         userpath=os.path.join(
                             temp_dir, "user-{}.sqlite3".format(index)),
-                        dictionaries=("word.dat", "tsi.dat", "pime.dat"))
+                        dictionaries=("word.dat", "tsi.dat", extension))
                     try:
                         for key in keys:
                             self.assertEqual(

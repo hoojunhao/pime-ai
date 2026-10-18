@@ -10,6 +10,7 @@ PIME_DICTIONARIES = (
     "word.dat",
     "tsi.dat",
     "pime.dat",
+    "pime-ai.dat",
     "chewing.dat",
     "chewing-deleted.dat",
 )

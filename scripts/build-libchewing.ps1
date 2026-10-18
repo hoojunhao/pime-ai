@@ -18,6 +18,10 @@ $libchewingRoot = Join-Path $repositoryRoot "libchewing"
 $runtimeRoot = Join-Path $repositoryRoot "python\libchewing"
 $runtimeDataRoot = Join-Path $runtimeRoot "data"
 $pimeDictionarySource = Join-Path $repositoryRoot "data\chewing\pime.csv"
+$pimeAiDictionarySource = Join-Path $repositoryRoot "data\chewing\pime-ai.csv"
+$dictionaryValidator = Join-Path $repositoryRoot `
+    "scripts\validate-chewing-dictionaries.py"
+$bundledPython = Join-Path $repositoryRoot "python\python3\python.exe"
 $expectedLibchewingCommit = "f071d2e95c531cc39bb4325cd5a5d0e1d51daef8"
 $expectedDataCommit = "bfba418ea8a4bd2fe10b9bf80b4bf81ec01af5f4"
 $rustToolchain = "1.88.0-x86_64-pc-windows-msvc"
@@ -117,6 +121,9 @@ function Get-RepositoryRelativePath {
 if (-not (Test-Path (Join-Path $libchewingRoot "CMakeLists.txt"))) {
     throw "libchewing is not initialized. Run: git submodule update --init --recursive"
 }
+if (-not (Test-Path $bundledPython)) {
+    throw "Bundled Python was not found at $bundledPython"
+}
 
 $libchewingCommit = Get-GitRevision $libchewingRoot
 $dataRoot = Join-Path $libchewingRoot "data"
@@ -136,6 +143,12 @@ if ($LASTEXITCODE -ne 0) {
 if ($sourceChanges.Count -ne 0) {
     throw "The libchewing submodule must be clean before building."
 }
+
+Invoke-NativeCommand $bundledPython $dictionaryValidator `
+    --base (Join-Path $dataRoot "dict\chewing\word.csv") `
+    --base (Join-Path $dataRoot "dict\chewing\tsi.csv") `
+    --overlay $pimeDictionarySource `
+    --overlay $pimeAiDictionarySource
 
 $cmakeVersionLine = (& cmake --version | Select-Object -First 1)
 if ($LASTEXITCODE -ne 0 -or $cmakeVersionLine -notmatch "(\d+\.\d+\.\d+)") {
@@ -298,6 +311,9 @@ foreach ($name in "word.dat", "tsi.dat", "symbols.dat", "swkb.dat") {
 Invoke-NativeCommand $sourceFiles["chewing-cli.exe"] init-database --csv `
     --usage extension $pimeDictionarySource `
     (Join-Path $stagingDictionaryRoot "pime.dat")
+Invoke-NativeCommand $sourceFiles["chewing-cli.exe"] init-database --csv `
+    --usage extension $pimeAiDictionarySource `
+    (Join-Path $stagingDictionaryRoot "pime-ai.dat")
 
 New-Item -ItemType Directory -Force $runtimeDataRoot | Out-Null
 Copy-Item (Join-Path $stagingRoot "chewing.dll") `
@@ -329,6 +345,7 @@ foreach ($path in @(
     (Join-Path $runtimeDataRoot "symbols.dat"),
     (Join-Path $runtimeDataRoot "swkb.dat")
     (Join-Path $runtimeDataRoot "dictionary.d\pime.dat")
+    (Join-Path $runtimeDataRoot "dictionary.d\pime-ai.dat")
 )) {
     $hash = Get-FileHash -Algorithm SHA256 $path
     $relativePath = Get-RepositoryRelativePath $path
