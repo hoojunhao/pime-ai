@@ -672,9 +672,7 @@ class ChewingTextService(TextService):
 
             # 輸入到一半，還沒組成字的注音符號 (bopomofo)
             if chewingContext.bopomofo_Check():
-                bopomofoStr = ""
-                bopomofoStr = chewingContext.bopomofo_String(
-                    None).decode("UTF-8")
+                bopomofoStr = chewingContext.bopomofo_String().decode("UTF-8")
                 # 把輸入到一半，還沒組成字的注音字串，也插入到編輯區內，並且更新游標位置
                 pos = chewingContext.cursor_Current()
                 compStr = compStr[:pos] + bopomofoStr + compStr[pos:]
