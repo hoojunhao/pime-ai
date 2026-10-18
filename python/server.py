@@ -126,14 +126,19 @@ class Server(object):
                 traceback.print_exc()
                 append_error_log("ERROR: {0}\nREQUEST: {1}\n{2}\n".format(e, line, traceback.format_exc()))
                 
-                if client and client.service:
-                    client.service.currentReply = {}
+                service = getattr(client, "service", None)
+                if service:
+                    service.currentReply = {}
                 
                 # generate an output containing {success: False} to prevent the client from being blocked
                 reply_dict = {"success": False}
                 if isinstance(msg, dict) and "seqNum" in msg:
                     reply_dict["seqNum"] = msg["seqNum"]
-                reply_line = '|'.join(["PIME_MSG", client_id, json.dumps(reply_dict)])
+                reply_line = '|'.join([
+                    "PIME_MSG",
+                    client_id,
+                    json.dumps(reply_dict, separators=(",", ":")),
+                ])
                 print(reply_line, flush=True)
                 # Keep the backend alive after one bad request; tearing down an
                 # active TSF session can destabilize the foreground application.
