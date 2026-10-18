@@ -42,7 +42,12 @@ Contributions using AI coding tools are welcomed! However, to ensure code qualit
         cmake . -Bbuild64 -G "Visual Studio 16 2019" -A x64
         cmake --build build64 --config Release --target PIMETextService
 
-*   The generated installer will be in the `installer` folder after running `makensis`.
+*   Generate the combined license file, then build the NSIS installer:
+
+        powershell -NoProfile -ExecutionPolicy Bypass -File .\installer\generate-licenses.ps1
+        makensis .\installer\installer.nsi
+
+    The installer is generated in `installer` with fast zlib compression. Its compact DPI-aware UI follows the Windows app theme, keeps page headers stable while navigating, uses a tightly spaced control rail and the available height for the component list, presents project licenses without click-through acceptance, and finishes on the progress page with a Close button.
 
 ## TSF References
 *   [Text Services Framework](http://msdn.microsoft.com/en-us/library/windows/desktop/ms629032%28v=vs.85%29.aspx)

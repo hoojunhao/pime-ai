@@ -104,6 +104,7 @@ jobs:
       - name: Build the installer
         shell: cmd
         run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File ".\installer\generate-licenses.ps1"
           "C:\Program Files (x86)\NSIS\Bin\makensis.exe" ".\installer\installer.nsi"
 
       # ---------------------------------------------------------------
