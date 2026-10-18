@@ -41,14 +41,6 @@ Var UI_ArchLabel
 	${EndIf}
 !macroend
 
-!macro PIME_SET_TRANSPARENT CONTROL LIGHT_TEXT DARK_TEXT
-	${If} $UI_IsDark == 1
-		SetCtlColors ${CONTROL} "${DARK_TEXT}" "transparent"
-	${Else}
-		SetCtlColors ${CONTROL} "${LIGHT_TEXT}" "transparent"
-	${EndIf}
-!macroend
-
 !macro PIME_THEME_PAGE_LABEL CONTROL_ID
 	GetDlgItem $UI_Control $0 ${CONTROL_ID}
 	!insertmacro PIME_SET_COLORS $UI_Control \
@@ -139,9 +131,18 @@ Function ${PREFIX}UI_ApplyShellTheme
 	ShowWindow $mui.Branding.Text ${SW_HIDE}
 
 	; MUI header labels.
+	GetDlgItem $UI_Control $HWNDPARENT 1034
+	!insertmacro PIME_SET_COLORS $UI_Control \
+		"${UI_COLOR_LIGHT_TEXT}" "${UI_COLOR_LIGHT_SURFACE}" \
+		"${UI_COLOR_DARK_TEXT}" "${UI_COLOR_DARK_SURFACE}"
 	GetDlgItem $UI_Control $HWNDPARENT 1037
-	!insertmacro PIME_SET_TRANSPARENT $UI_Control \
-		"${UI_COLOR_LIGHT_TEXT}" "${UI_COLOR_DARK_TEXT}"
+	; Keep the header background opaque. MUI reuses this control and changes
+	; its text in place between page and completion states; a transparent
+	; static control leaves the previous title pixels behind. Match the
+	; surrounding header surface so the repaint has no visible color block.
+	!insertmacro PIME_SET_COLORS $UI_Control \
+		"${UI_COLOR_LIGHT_TEXT}" "${UI_COLOR_LIGHT_SURFACE}" \
+		"${UI_COLOR_DARK_TEXT}" "${UI_COLOR_DARK_SURFACE}"
 	; MUI reserves a short single-line control here. Keep a dedicated font
 	; and use the hidden subtitle row to provide enough line height.
 	SendMessage $UI_Control ${WM_SETFONT} $UI_HeaderFont 1
@@ -163,9 +164,9 @@ Function ${PREFIX}UI_ApplyShellTheme
 	!insertmacro PIME_THEME_PAGE_LABEL 1021
 	!insertmacro PIME_THEME_PAGE_LABEL 1022
 	!insertmacro PIME_THEME_PAGE_LABEL 1023
+	!insertmacro PIME_THEME_PAGE_LABEL 1029
 	!insertmacro PIME_THEME_PAGE_LABEL 1034
 	!insertmacro PIME_THEME_PAGE_LABEL 1040
-	!insertmacro PIME_THEME_PAGE_LABEL 1042
 	!insertmacro PIME_THEME_PAGE_LABEL 1043
 
 	GetDlgItem $UI_Control $0 1000
@@ -276,12 +277,15 @@ Function UI_WelcomePageCreate
 		"${UI_COLOR_DARK_TEXT}" "${UI_COLOR_DARK_BACKGROUND}"
 	SendMessage $UI_Control ${WM_SETFONT} $UI_TitleFont 1
 
-	${NSD_CreateGroupBox} 14u 39u -14u 48u "$(UI_SYSTEM_INFO)"
+	${NSD_CreateLabel} 14u 39u -14u 12u "$(UI_SYSTEM_INFO)"
+	Pop $UI_Control
+	Call UI_ApplyCustomControlTheme
+
+	${NSD_CreateLabel} 14u 52u -14u 1u ""
 	Pop $UI_Control
 	!insertmacro PIME_SET_COLORS $UI_Control \
-		"${UI_COLOR_LIGHT_TEXT}" "${UI_COLOR_LIGHT_BACKGROUND}" \
-		"${UI_COLOR_DARK_TEXT}" "${UI_COLOR_DARK_BACKGROUND}"
-	SendMessage $UI_Control ${WM_SETFONT} $UI_BodyFont 1
+		"${UI_COLOR_LIGHT_MUTED}" "${UI_COLOR_LIGHT_MUTED}" \
+		"${UI_COLOR_DARK_TEXT}" "${UI_COLOR_DARK_TEXT}"
 
 	${If} ${IsNativeARM64}
 		StrCpy $UI_ArchLabel "$(UI_ARCH_ARM64)"
@@ -291,11 +295,11 @@ Function UI_WelcomePageCreate
 		StrCpy $UI_ArchLabel "$(UI_ARCH_X86)"
 	${EndIf}
 
-	${NSD_CreateLabel} 28u 53u -28u 14u "$(UI_VERSION_LABEL) ${PRODUCT_VERSION}"
+	${NSD_CreateLabel} 28u 59u -28u 14u "$(UI_VERSION_LABEL) ${PRODUCT_VERSION}"
 	Pop $UI_Control
 	Call UI_ApplyCustomControlTheme
 
-	${NSD_CreateLabel} 28u 70u -28u 14u "$(UI_ARCH_LABEL) $UI_ArchLabel"
+	${NSD_CreateLabel} 28u 76u -28u 14u "$(UI_ARCH_LABEL) $UI_ArchLabel"
 	Pop $UI_Control
 	Call UI_ApplyCustomControlTheme
 
@@ -389,14 +393,12 @@ Function UI_LayoutComponentsPage
 	IntOp $8 $9 - 35
 
 	GetDlgItem $UI_Control $0 1042
-	System::Call 'USER32::SetWindowPos(p $UI_Control, p0, i r7, i r5, i r6, i r8, i0x0034)'
+	ShowWindow $UI_Control ${SW_HIDE}
 
-	IntOp $4 $7 + 9
-	IntOp $3 $5 + 19
-	IntOp $2 $6 - 18
-	IntOp $1 $8 - 25
+	; Use the entire right rail for hover descriptions and align its top with
+	; the component tree. The page-show callback clears the initial hint.
 	GetDlgItem $UI_Control $0 1043
-	System::Call 'USER32::SetWindowPos(p $UI_Control, p0, i r4, i r3, i r2, i r1, i0x0034)'
+	System::Call 'USER32::SetWindowPos(p $UI_Control, p0, i r7, i r5, i r6, i r8, i0x0034)'
 
 	IntOp $3 $5 + $8
 	IntOp $3 $3 + 6
@@ -431,5 +433,7 @@ Function UI_ThemeComponentsPage
 	GetDlgItem $UI_Control $0 1006
 	SendMessage $UI_Control ${WM_SETTEXT} 0 "STR:$(UI_COMPONENTS_HINT)"
 	Call UI_LayoutComponentsPage
+	; Leave the description rail empty until a component is hovered.
+	SendMessage $mui.ComponentsPage.DescriptionText ${WM_SETTEXT} 0 "STR:"
 	System::Call 'user32::RedrawWindow(p $HWNDPARENT, p0, p0, i 0x0585)'
 FunctionEnd

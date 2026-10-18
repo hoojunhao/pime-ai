@@ -10,6 +10,10 @@ Implement input methods easily for Windows via Text Services Framework:
 
 All parts are licensed under GNU LGPL v2.1 license.
 
+# Documentation
+
+*   [MSIX and Microsoft Store publishing feasibility](docs/msix-store-feasibility.md)
+
 # Contributing
 Contributions using AI coding tools are welcomed! However, to ensure code quality, they must follow the rules in [AGENTS.md](AGENTS.md) to be accepted, and AI assistance must be clearly declared in pull requests, git commits, and file headers.
 
@@ -47,7 +51,7 @@ Contributions using AI coding tools are welcomed! However, to ensure code qualit
         powershell -NoProfile -ExecutionPolicy Bypass -File .\installer\generate-licenses.ps1
         makensis .\installer\installer.nsi
 
-    The installer is generated in `installer` with fast zlib compression. Its compact DPI-aware UI follows the Windows app theme, keeps page headers stable while navigating, uses a tightly spaced control rail and the available height for the component list, presents project licenses without click-through acceptance, and finishes on the progress page with a Close button.
+    The installer is generated in `installer` with fast zlib compression. Its compact DPI-aware UI follows the Windows app theme, repaints page headers cleanly during install and uninstall transitions, shows component descriptions only on hover, presents project licenses without click-through acceptance, and finishes on the progress page with a Close button.
 
 ## TSF References
 *   [Text Services Framework](http://msdn.microsoft.com/en-us/library/windows/desktop/ms629032%28v=vs.85%29.aspx)
