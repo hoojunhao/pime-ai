@@ -47,6 +47,10 @@ _declare(
     "chewing_new2",
     [c_char_p, c_char_p, c_void_p, c_void_p],
     _context_pointer)
+_declare(
+    "chewing_new3",
+    [c_char_p, c_char_p, c_char_p, c_void_p, c_void_p],
+    _context_pointer)
 _declare("chewing_delete", [_context_pointer], None)
 _declare("chewing_version", [], c_char_p)
 
@@ -149,17 +153,30 @@ def Init(datadir, userdir):
 
 
 class ChewingContext:
+    """Own a native context, optionally with an explicit dictionary list."""
+
     def __init__(self, **kwargs):
         if not kwargs:
             self.ctx = _libchewing.chewing_new()
         else:
             syspath = _encode_path(kwargs.get("syspath", None))
             userpath = _encode_path(kwargs.get("userpath", None))
-            self.ctx = _libchewing.chewing_new2(
-                syspath,
-                userpath,
-                None,
-                None)
+            dictionaries = kwargs.get("dictionaries", None)
+            if dictionaries is None:
+                self.ctx = _libchewing.chewing_new2(
+                    syspath,
+                    userpath,
+                    None,
+                    None)
+            else:
+                if not isinstance(dictionaries, (str, bytes)):
+                    dictionaries = ",".join(dictionaries)
+                self.ctx = _libchewing.chewing_new3(
+                    syspath,
+                    userpath,
+                    _encode_path(dictionaries),
+                    None,
+                    None)
         if not self.ctx:
             raise RuntimeError("Unable to create a libchewing context")
 

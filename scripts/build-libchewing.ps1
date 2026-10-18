@@ -17,6 +17,7 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $libchewingRoot = Join-Path $repositoryRoot "libchewing"
 $runtimeRoot = Join-Path $repositoryRoot "python\libchewing"
 $runtimeDataRoot = Join-Path $runtimeRoot "data"
+$pimeDictionarySource = Join-Path $repositoryRoot "data\chewing\pime.csv"
 $expectedLibchewingCommit = "f071d2e95c531cc39bb4325cd5a5d0e1d51daef8"
 $expectedDataCommit = "bfba418ea8a4bd2fe10b9bf80b4bf81ec01af5f4"
 $rustToolchain = "1.88.0-x86_64-pc-windows-msvc"
@@ -267,6 +268,7 @@ Invoke-NativeCommand cmake --install $BuildDirectory --config Release `
 
 $sourceFiles = [ordered]@{
     "chewing.dll" = Join-Path $installRoot "bin\chewing-msvc.dll"
+    "chewing-cli.exe" = Join-Path $installRoot "bin\chewing-cli.exe"
     "word.dat" = Join-Path $installRoot "share\libchewing\word.dat"
     "tsi.dat" = Join-Path $installRoot "share\libchewing\tsi.dat"
     "symbols.dat" = Join-Path $installRoot "share\libchewing\symbols.dat"
@@ -285,12 +287,17 @@ if ($machine -ne 0x014c) {
 
 $stagingRoot = Join-Path $BuildDirectory "pime-runtime"
 $stagingDataRoot = Join-Path $stagingRoot "data"
+$stagingDictionaryRoot = Join-Path $stagingDataRoot "dictionary.d"
 Remove-Item -Recurse -Force $stagingRoot -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $stagingDataRoot | Out-Null
+New-Item -ItemType Directory -Force $stagingDictionaryRoot | Out-Null
 Copy-Item $sourceFiles["chewing.dll"] (Join-Path $stagingRoot "chewing.dll")
 foreach ($name in "word.dat", "tsi.dat", "symbols.dat", "swkb.dat") {
     Copy-Item $sourceFiles[$name] (Join-Path $stagingDataRoot $name)
 }
+Invoke-NativeCommand $sourceFiles["chewing-cli.exe"] init-database --csv `
+    --usage extension $pimeDictionarySource `
+    (Join-Path $stagingDictionaryRoot "pime.dat")
 
 New-Item -ItemType Directory -Force $runtimeDataRoot | Out-Null
 Copy-Item (Join-Path $stagingRoot "chewing.dll") `
@@ -299,6 +306,9 @@ foreach ($name in "word.dat", "tsi.dat", "symbols.dat", "swkb.dat") {
     Copy-Item (Join-Path $stagingDataRoot $name) `
         (Join-Path $runtimeDataRoot $name) -Force
 }
+$runtimeDictionaryRoot = Join-Path $runtimeDataRoot "dictionary.d"
+Remove-Item -Recurse -Force $runtimeDictionaryRoot -ErrorAction SilentlyContinue
+Copy-Item $stagingDictionaryRoot $runtimeDictionaryRoot -Recurse
 foreach ($obsoleteName in "dictionary.dat", "index_tree.dat", "pinyin.tab") {
     Remove-Item (Join-Path $runtimeDataRoot $obsoleteName) `
         -Force -ErrorAction SilentlyContinue
@@ -318,6 +328,7 @@ foreach ($path in @(
     (Join-Path $runtimeDataRoot "tsi.dat"),
     (Join-Path $runtimeDataRoot "symbols.dat"),
     (Join-Path $runtimeDataRoot "swkb.dat")
+    (Join-Path $runtimeDataRoot "dictionary.d\pime.dat")
 )) {
     $hash = Get-FileHash -Algorithm SHA256 $path
     $relativePath = Get-RepositoryRelativePath $path

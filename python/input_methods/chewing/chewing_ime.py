@@ -19,8 +19,9 @@ from keycodes import *  # for VK_XXX constants
 from textService import *
 import os.path
 import time
-from libchewing import ChewingContext, CHEWING_DATA_DIR, CHINESE_MODE, \
-    ENGLISH_MODE, FULLSHAPE_MODE, HALFSHAPE_MODE
+from libchewing import ChewingContext, CHEWING_DATA_DIR, \
+    CHEWING_DICTIONARY_DIR, PIME_DICTIONARIES, CHINESE_MODE, ENGLISH_MODE, \
+    FULLSHAPE_MODE, HALFSHAPE_MODE
 
 import opencc  # OpenCC 繁體簡體中文轉換
 import sys
@@ -166,13 +167,17 @@ class ChewingTextService(TextService):
             # syspath 參數可包含多個路徑，用 ; 分隔
             # 此處把 user 設定檔目錄插入到 system-wide 資料檔路徑前
             # 如此使用者變更設定後，可以比系統預設值有優先權
-            search_paths = ";".join(
-                (cfg.getConfigDir(), CHEWING_DATA_DIR)).encode("UTF-8")
+            search_paths = ";".join((
+                cfg.getConfigDir(),
+                CHEWING_DICTIONARY_DIR,
+                CHEWING_DATA_DIR)).encode("UTF-8")
             user_phrase = cfg.getUserPhrase().encode("UTF-8")
 
             # 建立 ChewingContext，此處路徑需要 UTF-8 編碼
             chewingContext = ChewingContext(
-                syspath=search_paths, userpath=user_phrase)
+                syspath=search_paths,
+                userpath=user_phrase,
+                dictionaries=PIME_DICTIONARIES)
             self.chewingContext = chewingContext
             chewingContext.set_maxChiSymbolLen(50)  # 編輯區長度：50 bytes
 

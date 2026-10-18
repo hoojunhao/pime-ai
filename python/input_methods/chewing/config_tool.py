@@ -29,7 +29,8 @@ try:
     from input_methods.chewing.chewing_config import chewingConfig
 except ModuleNotFoundError:
     from chewing_config import chewingConfig
-from libchewing import ChewingContext, CHEWING_DATA_DIR
+from libchewing import ChewingContext, CHEWING_DATA_DIR, \
+    CHEWING_DICTIONARY_DIR, PIME_DICTIONARIES
 from ctypes import c_uint, byref, create_string_buffer
 
 config_dir = os.path.join(os.path.expandvars("%APPDATA%"), "PIME", "chewing")
@@ -42,10 +43,16 @@ SERVER_TIMEOUT = 120
 # syspath 參數可包含多個路徑，用 ; 分隔
 # 此處把 user 設定檔目錄插入到 system-wide 資料檔路徑前
 # 如此使用者變更設定後，可以比系統預設值有優先權
-search_paths = ";".join((chewingConfig.getConfigDir(), CHEWING_DATA_DIR)).encode("UTF-8")
+search_paths = ";".join((
+    chewingConfig.getConfigDir(),
+    CHEWING_DICTIONARY_DIR,
+    CHEWING_DATA_DIR)).encode("UTF-8")
 user_phrase = chewingConfig.getUserPhrase().encode("UTF-8")
 # print(search_paths, user_phrase)
-chewing_ctx = ChewingContext(syspath = search_paths, userpath = user_phrase)  # new libchewing context
+chewing_ctx = ChewingContext(
+    syspath=search_paths,
+    userpath=user_phrase,
+    dictionaries=PIME_DICTIONARIES)  # new libchewing context
 
 
 class BaseHandler(tornado.web.RequestHandler):

@@ -16,6 +16,7 @@ if PYTHON_DIR not in sys.path:
 libchewing = importlib.import_module("libchewing")
 binding = importlib.import_module("libchewing.libchewing")
 CHEWING_DATA_DIR = libchewing.CHEWING_DATA_DIR
+CHEWING_DICTIONARY_DIR = libchewing.CHEWING_DICTIONARY_DIR
 ChewingContext = libchewing.ChewingContext
 _libchewing = binding._libchewing
 
@@ -86,6 +87,38 @@ class LibchewingBindingTests(unittest.TestCase):
                 self.assertIn((phrase, bopomofo), enumerated)
             finally:
                 context.close()
+
+    def test_pime_extension_dictionary_is_loaded(self):
+        dictionary_dir = CHEWING_DICTIONARY_DIR
+        self.assertTrue(os.path.isfile(
+            os.path.join(dictionary_dir, "pime.dat")))
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for index, (keys, phrase) in enumerate((
+                    ("a83n dk4", "馬斯克"),
+                    ("u xj/6a83n dk4", "伊隆馬斯克"))):
+                with self.subTest(phrase=phrase):
+                    context = ChewingContext(
+                        syspath=";".join((
+                            dictionary_dir, CHEWING_DATA_DIR)),
+                        userpath=os.path.join(
+                            temp_dir, "user-{}.sqlite3".format(index)),
+                        dictionaries=("word.dat", "tsi.dat", "pime.dat"))
+                    try:
+                        for key in keys:
+                            self.assertEqual(
+                                context.handle_Default(ord(key)), 0)
+                        for _ in phrase:
+                            context.handle_Left()
+                        context.handle_Down()
+                        context.cand_Enumerate()
+                        candidates = []
+                        while context.cand_hasNext():
+                            candidates.append(
+                                context.cand_String().decode("utf-8"))
+                        self.assertIn(phrase, candidates)
+                    finally:
+                        context.close()
 
 
 if __name__ == "__main__":
