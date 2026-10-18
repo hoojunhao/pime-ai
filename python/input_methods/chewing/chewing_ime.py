@@ -28,7 +28,6 @@ import sys
 from ctypes import windll  # for ShellExecuteW() and GetAsyncKeyState()
 
 from .chewing_config import chewingConfig, SWITCH_LANG_WITH_BOTH_SHIFT, SWITCH_LANG_WITH_LEFT_SHIFT, SWITCH_LANG_WITH_RIGHT_SHIFT
-import sqlite3
 
 
 # 按鍵內碼和名稱的對應
@@ -514,48 +513,27 @@ class ChewingTextService(TextService):
                 candCursor = self.candidateCursor  # 目前的游標位置
                 candCount = len(self.candidateList)  # 目前選字清單項目數
 
-                # 處理詞彙 Ctrl + Del、刪除詞彙、Ctrl + PageUp 提昇/ Ctrl + PageDown 降低詞頻
+                # Ctrl+Del 刪除詞彙；新版 libchewing 不支援手動調整詞頻
                 if keyEvent.isKeyDown(VK_CONTROL) and (keyCode == VK_DELETE or keyCode == VK_NEXT or keyCode == VK_PRIOR):
                     if candCount == 0 or candCursor >= candCount:
                         return False
                     target_phrase = self.candidateList[candCursor]
-                    phraseConnect = None
                     try:
-                        phraseConnect = sqlite3.connect(chewingConfig.getUserPhrase())
-                        cursor = phraseConnect.cursor()
-                        cursor.execute("SELECT * FROM userphrase_v1 WHERE phrase=:target_phrase", {"target_phrase": target_phrase})
-                        result = cursor.fetchone()
-                        if (result is None):
-                            phraseConnect.close()
-                            if keyCode == VK_DELETE:
+                        if keyCode == VK_DELETE:
+                            removed = chewingContext.remove_userphrases_by_phrase(
+                                target_phrase)
+                            if removed:
+                                self.showMessage(
+                                    "刪除「" + target_phrase + "」成功", 2)
+                            else:
                                 self.showMessage("詞彙「" + target_phrase + "」不存在，無法刪除", 2)
-                            elif keyCode == VK_NEXT:
-                                self.showMessage("詞彙「" + target_phrase + "」不存在，無法降低詞頻", 2)
-                            elif keyCode == VK_PRIOR:
-                                self.showMessage("詞彙「" + target_phrase + "」不存在，無法提昇詞頻", 2)
                         else:
-                            if keyCode == VK_DELETE:
-                                cursor.execute("DELETE FROM userphrase_v1 WHERE phrase=:target_phrase", {"target_phrase": target_phrase})
-                                phraseConnect.commit()
-                                phraseConnect.close()
-                                self.showMessage("刪除「" + target_phrase + "」成功", 2)
-                            elif keyCode == VK_NEXT:
-                                cursor.execute("UPDATE userphrase_v1 SET user_freq = 0 WHERE phrase=:target_phrase", {"target_phrase": target_phrase})
-                                phraseConnect.commit()
-                                phraseConnect.close()
-                                self.showMessage("↓降低「" + target_phrase + "」詞頻成功", 2)
-                            elif keyCode == VK_PRIOR:
-                                cursor.execute("UPDATE userphrase_v1 SET user_freq = 5000 WHERE phrase=:target_phrase", {"target_phrase": target_phrase})
-                                phraseConnect.commit()
-                                phraseConnect.close()
-                                self.showMessage("↑提昇「" + target_phrase + "」詞頻成功", 2)
+                            self.showMessage(
+                                "libchewing v0.13.1 暫不支援手動調整詞頻",
+                                2)
                         ignoreKey = keyHandled = True
                     except Exception as err:
                         self.showMessage(str(err), 2)
-                    finally:
-                        if phraseConnect:
-                            try: phraseConnect.close()
-                            except Exception: pass
 
                 # 處理 Home、End 鍵，移到選字視窗的第一和最後一個字
                 if keyCode == VK_HOME:

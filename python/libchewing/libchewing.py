@@ -16,10 +16,22 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from ctypes import CDLL, POINTER, c_char, c_char_p, c_int, c_uint, c_void_p
+from ctypes import (
+    CDLL,
+    POINTER,
+    byref,
+    c_char,
+    c_char_p,
+    c_int,
+    c_uint,
+    c_void_p,
+    create_string_buffer,
+)
 import os
 import sys
 from typing import Any
+
+from .user_dictionary import prepare_user_dictionary
 
 _libchewing: Any = None
 if sys.platform == "win32": # Windows
@@ -160,23 +172,25 @@ class ChewingContext:
             self.ctx = _libchewing.chewing_new()
         else:
             syspath = _encode_path(kwargs.get("syspath", None))
-            userpath = _encode_path(kwargs.get("userpath", None))
+            raw_userpath = kwargs.get("userpath", None)
+            userpath = _encode_path(raw_userpath)
             dictionaries = kwargs.get("dictionaries", None)
-            if dictionaries is None:
-                self.ctx = _libchewing.chewing_new2(
-                    syspath,
-                    userpath,
-                    None,
-                    None)
-            else:
-                if not isinstance(dictionaries, (str, bytes)):
-                    dictionaries = ",".join(dictionaries)
-                self.ctx = _libchewing.chewing_new3(
-                    syspath,
-                    userpath,
-                    _encode_path(dictionaries),
-                    None,
-                    None)
+            with prepare_user_dictionary(raw_userpath):
+                if dictionaries is None:
+                    self.ctx = _libchewing.chewing_new2(
+                        syspath,
+                        userpath,
+                        None,
+                        None)
+                else:
+                    if not isinstance(dictionaries, (str, bytes)):
+                        dictionaries = ",".join(dictionaries)
+                    self.ctx = _libchewing.chewing_new3(
+                        syspath,
+                        userpath,
+                        _encode_path(dictionaries),
+                        None,
+                        None)
         if not self.ctx:
             raise RuntimeError("Unable to create a libchewing context")
 
@@ -222,6 +236,36 @@ class ChewingContext:
                 raise RuntimeError("The libchewing context is closed")
             return function(self.ctx, *args)
         return call
+
+    def remove_userphrases_by_phrase(self, phrase):
+        """Remove every user phrase pronunciation matching phrase."""
+        if isinstance(phrase, bytes):
+            encoded_phrase = phrase
+            phrase = phrase.decode("utf-8")
+        else:
+            encoded_phrase = phrase.encode("utf-8")
+
+        phrase_len = c_uint()
+        bopomofo_len = c_uint()
+        matches = []
+        self.userphrase_enumerate()
+        while self.userphrase_has_next(
+                byref(phrase_len), byref(bopomofo_len)):
+            phrase_buffer = create_string_buffer(phrase_len.value)
+            bopomofo_buffer = create_string_buffer(bopomofo_len.value)
+            if self.userphrase_get(
+                    phrase_buffer,
+                    phrase_len,
+                    bopomofo_buffer,
+                    bopomofo_len) == 0:
+                if phrase_buffer.value.decode("utf-8") == phrase:
+                    matches.append(bopomofo_buffer.value)
+
+        removed = 0
+        for bopomofo in matches:
+            if self.userphrase_remove(encoded_phrase, bopomofo):
+                removed += 1
+        return removed
 
     # The original libchewing API is set_selKey (without 's')
     # It only accepts an integer array. Let's create a new API that accepts

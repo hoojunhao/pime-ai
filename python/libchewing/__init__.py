@@ -11,8 +11,6 @@ PIME_DICTIONARIES = (
     "tsi.dat",
     "pime.dat",
     "pime-ai.dat",
-    "chewing.dat",
-    "chewing-deleted.dat",
 )
 
 # from libchewing/include/global.h
