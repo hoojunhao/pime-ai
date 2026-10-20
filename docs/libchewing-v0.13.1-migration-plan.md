@@ -38,7 +38,7 @@ submodule 固定 commit 為準，不依賴該外部目錄。
 | NSIS installer | 完成建置 | payload 包含新版 DLL、系統詞庫、`pime.dat` 與 `pime-ai.dat` |
 | Fresh install 人工測試 | 尚未執行 | 尚未在測試機完成 TSF 註冊、輸入及 uninstall |
 | SQLite 使用者詞庫 | 完成 | carried patch 修正 usage；新增、重開、刪除與雙 context 測試通過 |
-| 舊詞庫遷移 | 完成自動化路徑 | 先驗證 `.pre-v0.13.1.bak`，再由 v0.13.1 migration 轉換 |
+| 舊詞庫遷移 | 完成自動化路徑 | 先驗證 `.pre-v0.13.1.bak`，再由 v0.13.1 migration 轉換；明確選取的低頻候選會立即升至同音最高頻率以上 |
 
 ### 產物
 
@@ -217,6 +217,8 @@ aae6d23 Separate the PIME AI Chewing dictionary
   `chewing.sqlite3.pre-v0.13.1.bak`，備份失敗時停止 migration。
 - 舊資料轉換沿用 v0.13.1 的 `userphrase_v1` migration，不由 PIME 重寫
   SQLite schema。
+- 建置時套用 learning patch；遷移後若使用者明確提交低於同音最高頻率的
+  既有候選，將該候選提升至最高頻率加 10，避免舊頻率尺度使偏好無法翻轉。
 - Ctrl+Delete 先透過公開 enumeration 取得讀音，再呼叫
   `chewing_userphrase_remove()`；手動調頻暫停支援。
 - SQLite 模式不再混載 `chewing.dat` 或 `chewing-deleted.dat`。

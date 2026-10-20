@@ -1,0 +1,24 @@
+diff --git a/src/editor/estimate.rs b/src/editor/estimate.rs
+--- a/src/editor/estimate.rs
++++ b/src/editor/estimate.rs
+@@ -70 +70,4 @@ impl UserFreqEstimate for LaxUserFreqEstimate {
+-        if delta_time == 0 {
++        // A migrated phrase may carry a frequency from the old dictionary
++        // scale. Promote an explicitly committed lower-frequency candidate
++        // above the current maximum instead of making it catch up gradually.
++        if delta_time == 0 || phrase.freq() < max_freq {
+@@ -116 +120 @@ mod tests {
+-    fn estimate_second_use_phrase() {
++    fn estimate_selected_lower_frequency_phrase() {
+@@ -119 +123 @@ mod tests {
+-        assert_eq!(60, est.estimate(&phrase, 900));
++        assert_eq!(910, est.estimate(&phrase, 900));
+@@ -126 +130 @@ mod tests {
+-        assert_eq!(55, est.estimate(&phrase, 900));
++        assert_eq!(55, est.estimate(&phrase, 50));
+@@ -133 +137 @@ mod tests {
+-        assert_eq!(51, est.estimate(&phrase, 900));
++        assert_eq!(51, est.estimate(&phrase, 50));
+@@ -140 +144 @@ mod tests {
+-        assert_eq!(51, est.estimate(&phrase, 900));
++        assert_eq!(51, est.estimate(&phrase, 50));

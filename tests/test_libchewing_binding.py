@@ -47,6 +47,31 @@ def _create_legacy_user_dictionary(path):
         connection.commit()
 
 
+def _create_legacy_candidate_dictionary(path):
+    with closing(sqlite3.connect(path)) as connection:
+        connection.execute(
+            "CREATE TABLE userphrase_v1 ("
+            "time INTEGER, user_freq INTEGER, max_freq INTEGER, "
+            "orig_freq INTEGER, length INTEGER, "
+            "phone_0 INTEGER, phone_1 INTEGER, phone_2 INTEGER, "
+            "phone_3 INTEGER, phone_4 INTEGER, phone_5 INTEGER, "
+            "phone_6 INTEGER, phone_7 INTEGER, phone_8 INTEGER, "
+            "phone_9 INTEGER, phone_10 INTEGER, phrase TEXT, "
+            "PRIMARY KEY ("
+            "phone_0, phone_1, phone_2, phone_3, phone_4, phone_5, "
+            "phone_6, phone_7, phone_8, phone_9, phone_10, phrase"
+            "))")
+        rows = (
+            (143157, 114, 114, 0, 1, 3715, "你"),
+            (160001, 129, 129, 0, 1, 3715, "妳"),
+        )
+        connection.executemany(
+            "INSERT INTO userphrase_v1 VALUES ("
+            "?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ?)",
+            rows)
+        connection.commit()
+
+
 def _get_userphrases(context):
     phrase_len = c_uint()
     bopomofo_len = c_uint()
@@ -208,6 +233,59 @@ class LibchewingBindingTests(unittest.TestCase):
             reopened.close()
             with open(backup_path, "rb") as backup:
                 self.assertEqual(backup.read(), original_backup)
+
+    def test_selected_migrated_candidate_becomes_next_default(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            user_path = os.path.join(temp_dir, "chewing.sqlite3")
+            _create_legacy_candidate_dictionary(user_path)
+
+            context = ChewingContext(
+                syspath=PIME_SEARCH_PATH,
+                userpath=user_path,
+                dictionaries=PIME_DICTIONARIES)
+            try:
+                context.set_autoLearn(0)
+                context.set_KBType(0)
+                context.set_candPerPage(10)
+                context.set_spaceAsSelection(1)
+                for key in "su3":
+                    self.assertEqual(context.handle_Default(ord(key)), 0)
+                self.assertEqual(
+                    context.buffer_String().decode("utf-8"),
+                    "你")
+
+                context.handle_Space()
+                context.cand_Enumerate()
+                candidates = []
+                while context.cand_hasNext():
+                    candidates.append(
+                        context.cand_String().decode("utf-8"))
+                selected_index = candidates.index("妳")
+                selection_keys = "1234567890"
+                context.handle_Default(
+                    ord(selection_keys[selected_index]))
+                self.assertEqual(
+                    context.buffer_String().decode("utf-8"),
+                    "妳")
+                context.handle_Enter()
+                self.assertEqual(
+                    context.commit_String().decode("utf-8"),
+                    "妳")
+            finally:
+                context.close()
+
+            reopened = ChewingContext(
+                syspath=PIME_SEARCH_PATH,
+                userpath=user_path,
+                dictionaries=PIME_DICTIONARIES)
+            try:
+                for key in "su3":
+                    self.assertEqual(reopened.handle_Default(ord(key)), 0)
+                self.assertEqual(
+                    reopened.buffer_String().decode("utf-8"),
+                    "妳")
+            finally:
+                reopened.close()
 
     def test_remove_userphrases_by_phrase_persists(self):
         with tempfile.TemporaryDirectory() as temp_dir:

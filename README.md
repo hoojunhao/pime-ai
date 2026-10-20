@@ -14,6 +14,7 @@ All parts are licensed under GNU LGPL v2.1 license.
 
 *   [MSIX and Microsoft Store publishing feasibility](docs/msix-store-feasibility.md)
 *   [libchewing v0.13.1 migration plan](docs/libchewing-v0.13.1-migration-plan.md)
+*   [libchewing upgrade guide][libchewing-upgrade-guide]
 
 # Contributing
 Contributions using AI coding tools are welcomed! However, to ensure code quality, they must follow the rules in [AGENTS.md](AGENTS.md) to be accepted, and AI assistance must be clearly declared in pull requests, git commits, and file headers.
@@ -45,13 +46,16 @@ Contributions using AI coding tools are welcomed! However, to ensure code qualit
     regenerates the reviewable PIME and PIME AI extension dictionaries from
     `data/chewing/pime.csv` and `data/chewing/pime-ai.csv`. Keep vocabulary
     maintained only by this fork in `pime-ai.csv`. The script also applies the
-    pinned SQLite user-dictionary fix from `patches/` while building, then
-    restores the libchewing submodule to a clean state.
+    pinned SQLite user-dictionary and migrated-candidate learning fixes from
+    `patches/` while building, then restores the libchewing submodule to a
+    clean state.
 
     Before libchewing v0.13.1 migrates an existing `chewing.sqlite3`, PIME
     creates and verifies a one-time `.pre-v0.13.1.bak` backup. User phrase
-    deletion uses the public libchewing API; manual frequency adjustment is
-    disabled because v0.13.1 has no public API for it.
+    deletion uses the public libchewing API. After migration, committing a
+    lower-frequency candidate promotes it above the current reading maximum,
+    so one explicit selection takes effect immediately. Manual frequency
+    adjustment is disabled because v0.13.1 has no public API for it.
 
         cmake . -Bbuild -G "Visual Studio 16 2019" -A Win32
         cmake --build build --config Release
@@ -137,3 +141,5 @@ If you encounter issues, you can run `PIMELauncher.exe` with the following debug
   ```
 
 When run normally without `/console` or `/log-file`, all debug logging is completely suppressed to avoid unnecessary I/O overhead.
+
+[libchewing-upgrade-guide]: docs/libchewing-upgrade-guide.md
